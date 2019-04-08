@@ -16,7 +16,6 @@
 # specific language governing permissions and limitations
 # under the License.
 
-import os
 import os.path
 import sys
 from xml.dom import minidom
@@ -190,6 +189,7 @@ known_categories = {
     'CA': 'Certificate',
     'listElastistorInterface': 'Misc',
     'cloudian': 'Cloudian',
+    'fizzBuzz': 'fizzBuzz',
     'Sioc' : 'Sioc'
     }
 
