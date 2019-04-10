@@ -329,7 +329,6 @@ import org.apache.cloudstack.api.command.user.firewall.ListPortForwardingRulesCm
 import org.apache.cloudstack.api.command.user.firewall.UpdateEgressFirewallRuleCmd;
 import org.apache.cloudstack.api.command.user.firewall.UpdateFirewallRuleCmd;
 import org.apache.cloudstack.api.command.user.firewall.UpdatePortForwardingRuleCmd;
-import org.apache.cloudstack.api.command.user.fizzbuzz.FizzBuzzCmd;
 import org.apache.cloudstack.api.command.user.guest.ListGuestOsCategoriesCmd;
 import org.apache.cloudstack.api.command.user.guest.ListGuestOsCmd;
 import org.apache.cloudstack.api.command.user.iso.AttachIsoCmd;
@@ -1876,8 +1875,8 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         if (tags != null && !tags.isEmpty()) {
             final SearchBuilder<ResourceTagVO> tagSearch = _resourceTagDao.createSearchBuilder();
             for (int count = 0; count < tags.size(); count++) {
-                tagSearch.or().op("key" + String.valueOf(count), tagSearch.entity().getKey(), SearchCriteria.Op.EQ);
-                tagSearch.and("value" + String.valueOf(count), tagSearch.entity().getValue(), SearchCriteria.Op.EQ);
+                tagSearch.or().op("key" + count, tagSearch.entity().getKey(), SearchCriteria.Op.EQ);
+                tagSearch.and("value" + count, tagSearch.entity().getValue(), SearchCriteria.Op.EQ);
                 tagSearch.cp();
             }
             tagSearch.and("resourceType", tagSearch.entity().getResourceType(), SearchCriteria.Op.EQ);
@@ -1913,8 +1912,8 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
             int count = 0;
             sc.setJoinParameters("tagSearch", "resourceType", ResourceObjectType.PublicIpAddress.toString());
             for (final String key : tags.keySet()) {
-                sc.setJoinParameters("tagSearch", "key" + String.valueOf(count), key);
-                sc.setJoinParameters("tagSearch", "value" + String.valueOf(count), tags.get(key));
+                sc.setJoinParameters("tagSearch", "key" + count, key);
+                sc.setJoinParameters("tagSearch", "value" + count, tags.get(key));
                 count++;
             }
         }
@@ -2150,7 +2149,7 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         if(cmd.getDetails() != null && !cmd.getDetails().isEmpty()){
             Map<String, String> detailsMap = cmd.getDetails();
             for(Object key: detailsMap.keySet()){
-                _guestOsDetailsDao.addDetail(guestOsPersisted.getId(),(String) key,detailsMap.get((String) key), false);
+                _guestOsDetailsDao.addDetail(guestOsPersisted.getId(), (String) key, detailsMap.get(key), false);
             }
         }
 
@@ -2183,7 +2182,7 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         if(cmd.getDetails() != null && !cmd.getDetails().isEmpty()){
             Map<String, String> detailsMap = cmd.getDetails();
             for(Object key: detailsMap.keySet()){
-                _guestOsDetailsDao.addDetail(id,(String) key,detailsMap.get((String) key), false);
+                _guestOsDetailsDao.addDetail(id, (String) key, detailsMap.get(key), false);
             }
         }
 
@@ -2735,7 +2734,6 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         cmdList.add(CreateAutoScaleVmGroupCmd.class);
         cmdList.add(CreateAutoScaleVmProfileCmd.class);
         cmdList.add(CreateConditionCmd.class);
-        cmdList.add(FizzBuzzCmd.class);
         cmdList.add(DeleteAutoScalePolicyCmd.class);
         cmdList.add(DeleteAutoScaleVmGroupCmd.class);
         cmdList.add(DeleteAutoScaleVmProfileCmd.class);
@@ -3416,7 +3414,7 @@ public class ManagementServerImpl extends ManagerBase implements ManagementServe
         if (networks != null && !networks.isEmpty()) {
             securityGroupsEnabled = true;
             final String elbEnabled = _configDao.getValue(Config.ElasticLoadBalancerEnabled.key());
-            elasticLoadBalancerEnabled = elbEnabled == null ? false : Boolean.parseBoolean(elbEnabled);
+            elasticLoadBalancerEnabled = elbEnabled != null && Boolean.parseBoolean(elbEnabled);
             if (elasticLoadBalancerEnabled) {
                 final String networkType = _configDao.getValue(Config.ElasticLoadBalancerNetwork.key());
                 if (networkType != null) {
