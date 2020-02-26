@@ -24,7 +24,7 @@ After=libvirtd.service
 [Service]
 Type=simple
 EnvironmentFile=/etc/default/cloudstack-agent
-ExecStart=/usr/bin/java $JAVA_OPTS -cp $CLASSPATH $JAVA_CLASS
+ExecStart=/usr/bin/java $JAVA_OPTS $JAVA_DEBUG -cp $CLASSPATH $JAVA_CLASS
 Restart=always
 RestartSec=10s
 

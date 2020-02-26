@@ -18,15 +18,12 @@
 
 . /opt/cloud/bin/setup/common.sh
 
-secstorage_svcs() {
-  echo "apache2 cloud nfs-common portmap" > /var/cache/cloud/enabled_svcs
-  echo "conntrackd keepalived haproxy dnsmasq" > /var/cache/cloud/disabled_svcs
-  mkdir -p /var/log/cloud
-}
-
 setup_secstorage() {
   log_it "Setting up secondary storage system vm"
-  sysctl vm.min_free_kbytes=8192
+
+  echo "cloud apache2 nfs-common portmap" > /var/cache/cloud/enabled_svcs
+  echo "conntrackd keepalived haproxy dnsmasq" > /var/cache/cloud/disabled_svcs
+  mkdir -p /var/log/cloud
 
   setup_common eth0 eth1 eth2
   setup_storage_network
@@ -52,10 +49,10 @@ setup_secstorage() {
   setup_apache2 $ETH2_IP
 
   # Deprecated, should move to Cs Python all of it
-  sed -e "s/<VirtualHost .*:80>/<VirtualHost $ETH2_IP:80>/" \
-    -e "s/<VirtualHost .*:443>/<VirtualHost $ETH2_IP:443>/" \
-    -e "s/Listen .*:80/Listen $ETH2_IP:80/g" \
-    -e "s/Listen .*:443/Listen $ETH2_IP:443/g" /etc/apache2/vhost.template > /etc/apache2/sites-enabled/vhost-${ETH2_IP}.conf
+  sed -e "s/<VirtualHost .*:8180>/<VirtualHost $ETH2_IP:80>/" \
+    -e "s/<VirtualHost .*:8443>/<VirtualHost $ETH2_IP:443>/" \
+    -e "s/Listen .*:8180/Listen $ETH2_IP:80/g" \
+    -e "s/Listen .*:8443/Listen $ETH2_IP:443/g" /etc/apache2/vhost.template > /etc/apache2/sites-enabled/vhost-${ETH2_IP}.conf
 
   log_it "Setting up apache2 for post upload of volume/template"
   a2enmod proxy
@@ -80,10 +77,4 @@ CORS
   rm -f /etc/logrotate.d/cloud
 }
 
-secstorage_svcs
-if [ $? -gt 0 ]
-then
-  log_it "Failed to execute secstorage_svcs"
-  exit 1
-fi
 setup_secstorage

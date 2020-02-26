@@ -19,7 +19,7 @@
 set -e
 set -x
 
-CLOUDSTACK_RELEASE=4.11.3
+CLOUDSTACK_RELEASE=4.14.0
 
 function configure_apache2() {
    # Enable ssl, rewrite and auth
@@ -29,6 +29,21 @@ function configure_apache2() {
    cp /etc/apache2/sites-available/000-default.conf /etc/apache2/sites-available/default.orig
    cp /etc/apache2/sites-available/default-ssl.conf /etc/apache2/sites-available/default-ssl.orig
    sed -i 's/SSLProtocol .*$/SSLProtocol TLSv1.2/g' /etc/apache2/mods-available/ssl.conf
+}
+
+function configure_strongswan() {
+  # change the charon stroke timeout from 3 minutes to 30 seconds
+  sed -i "s/# timeout = 0/timeout = 30000/" /etc/strongswan.d/charon/stroke.conf
+}
+
+function configure_issue() {
+  cat > /etc/issue <<EOF
+
+   __?.o/  Apache CloudStack SystemVM $CLOUDSTACK_RELEASE
+  (  )#    https://cloudstack.apache.org
+ (___(_)   Debian GNU/Linux 9.12 \n \l
+
+EOF
 }
 
 function configure_cacerts() {
@@ -44,10 +59,12 @@ function configure_cacerts() {
 function install_cloud_scripts() {
   # ./cloud_scripts/ has been put there by ../../cloud_scripts_shar_archive.sh
   rsync -av ./cloud_scripts/ /
+
   chmod +x /opt/cloud/bin/* /opt/cloud/bin/setup/* \
     /root/{clearUsageRules.sh,reconfigLB.sh,monitorServices.py} \
-    /etc/profile.d/cloud.sh
+    /etc/profile.d/cloud.sh /etc/cron.daily/* /etc/cron.hourly/*
 
+  chmod +x /root/health_checks/*
   chmod -x /etc/systemd/system/*
 
   systemctl daemon-reload
@@ -60,20 +77,6 @@ function do_signature() {
   (cd ./cloud_scripts/; tar -cvf - * | gzip > /usr/share/cloud/cloud-scripts.tgz)
   md5sum /usr/share/cloud/cloud-scripts.tgz | awk '{print $1}' > /var/cache/cloud/cloud-scripts-signature
   echo "Cloudstack Release $CLOUDSTACK_RELEASE $(date)" > /etc/cloudstack-release
-}
-
-function configure_issue() {
-  cat > /etc/issue <<EOF
-   __?.o/  Apache CloudStack SystemVM $CLOUDSTACK_RELEASE
-  (  )#    https://cloudstack.apache.org
- (___(_)   Debian GNU/Linux 9 \n \l
-
-EOF
-}
-
-function configure_strongswan() {
-  # change the charon stroke timeout from 3 minutes to 30 seconds
-  sed -i "s/# timeout = 0/timeout = 30000/" /etc/strongswan.d/charon/stroke.conf
 }
 
 function configure_services() {
@@ -108,6 +111,18 @@ function configure_services() {
   systemctl disable strongswan
   systemctl disable x11-common
   systemctl disable xl2tpd
+  systemctl disable vgauth
+  systemctl disable sshd
+  systemctl disable nfs-common
+  systemctl disable portmap
+
+  # Disable guest services which will selectively be started based on hypervisor
+  systemctl disable open-vm-tools
+  systemctl disable xe-daemon
+  systemctl disable hyperv-daemons.hv-fcopy-daemon.service
+  systemctl disable hyperv-daemons.hv-kvp-daemon.service
+  systemctl disable hyperv-daemons.hv-vss-daemon.service
+  systemctl disable qemu-guest-agent
 
   configure_apache2
   configure_strongswan

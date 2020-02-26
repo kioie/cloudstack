@@ -28,7 +28,7 @@ User=cloud
 EnvironmentFile=/etc/default/cloudstack-management
 WorkingDirectory=/var/log/cloudstack/management
 PIDFile=/var/run/cloudstack-management.pid
-ExecStart=/usr/bin/java $JAVA_OPTS -cp $CLASSPATH $BOOTSTRAP_CLASS
+ExecStart=/usr/bin/java $JAVA_DEBUG $JAVA_OPTS -cp $CLASSPATH $BOOTSTRAP_CLASS
 
 [Install]
 WantedBy=multi-user.target

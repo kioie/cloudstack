@@ -56,8 +56,8 @@ class DataBag:
             with open(self.fpath, 'r') as _fh:
                 logging.debug("Loading data bag type %s", self.key)
                 data = json.load(_fh)
-        except IOError:
-            logging.debug("Creating data bag type %s", self.key)
+        except (IOError, ValueError):
+            logging.debug("Caught load error, creating empty data bag type %s", self.key)
             data.update({"id": self.key})
         finally:
             self.dbag = data
@@ -301,6 +301,7 @@ class QueueFile:
             if self.keep:
                 self.__moveFile(filename, self.configCache + "/processed")
             else:
+                logging.debug("Processed file deleted: %s and not kept in /processed", filename)
                 os.remove(filename)
             updateDataBag(self)
 

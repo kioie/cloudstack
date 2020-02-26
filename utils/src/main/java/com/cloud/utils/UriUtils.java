@@ -31,15 +31,18 @@ import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.ListIterator;
-import java.util.StringTokenizer;
 import java.util.Map;
-import java.util.HashMap;
-import java.util.Comparator;
+import java.util.Set;
+import java.util.StringTokenizer;
+import java.util.function.Predicate;
 
 import javax.xml.parsers.DocumentBuilder;
 import javax.xml.parsers.DocumentBuilderFactory;
+
 import org.apache.commons.httpclient.Credentials;
 import org.apache.commons.httpclient.HttpClient;
 import org.apache.commons.httpclient.HttpException;
@@ -53,18 +56,20 @@ import org.apache.commons.httpclient.util.URIUtil;
 import org.apache.http.NameValuePair;
 import org.apache.http.client.utils.URIBuilder;
 import org.apache.http.client.utils.URLEncodedUtils;
-
 import org.apache.http.message.BasicNameValuePair;
 import org.apache.log4j.Logger;
+import org.w3c.dom.Document;
+import org.w3c.dom.Element;
+import org.w3c.dom.NamedNodeMap;
+import org.w3c.dom.Node;
+import org.w3c.dom.NodeList;
+
+import com.google.common.base.Strings;
+import com.google.common.collect.ImmutableMap;
+import com.google.common.collect.ImmutableSet;
 
 import com.cloud.utils.crypt.DBEncryptionUtil;
 import com.cloud.utils.exception.CloudRuntimeException;
-import com.google.common.base.Strings;
-import org.w3c.dom.Document;
-import org.w3c.dom.Element;
-import org.w3c.dom.Node;
-import org.w3c.dom.NodeList;
-import org.w3c.dom.NamedNodeMap;
 
 public class UriUtils {
 
@@ -264,11 +269,8 @@ public class UriUtils {
                     (!uri.getScheme().equalsIgnoreCase("http") && !uri.getScheme().equalsIgnoreCase("https") && !uri.getScheme().equalsIgnoreCase("file"))) {
                 throw new IllegalArgumentException("Unsupported scheme for url: " + url);
             }
-            int port = uri.getPort();
-            if (!(port == 80 || port == 8080 || port == 443 || port == -1)) {
-                throw new IllegalArgumentException("Only ports 80, 8080 and 443 are allowed");
-            }
 
+            int port = uri.getPort();
             if (port == -1 && uri.getScheme().equalsIgnoreCase("https")) {
                 port = 443;
             } else if (port == -1 && uri.getScheme().equalsIgnoreCase("http")) {
@@ -487,75 +489,65 @@ public class UriUtils {
         }
     }
 
+    public static final Set<String> COMMPRESSION_FORMATS = ImmutableSet.of("zip", "bz2", "gz");
+
+    public static final Set<String> buildExtensionSet(boolean metalink, String... baseExtensions) {
+        final ImmutableSet.Builder<String> builder = ImmutableSet.builder();
+
+        for (String baseExtension : baseExtensions) {
+            builder.add("." + baseExtension);
+            for (String format : COMMPRESSION_FORMATS) {
+                builder.add("." + baseExtension + "." + format);
+            }
+        }
+
+        if (metalink) {
+            builder.add(".metalink");
+        }
+
+        return builder.build();
+    }
+
+    private final static Map<String, Set<String>> SUPPORTED_EXTENSIONS_BY_FORMAT =
+            ImmutableMap.<String, Set<String>>builder()
+                        .put("vhd", buildExtensionSet(false, "vhd"))
+                        .put("vhdx", buildExtensionSet(false, "vhdx"))
+                        .put("qcow2", buildExtensionSet(true, "qcow2"))
+                        .put("ova", buildExtensionSet(true, "ova"))
+                        .put("tar", buildExtensionSet(false, "tar"))
+                        .put("raw", buildExtensionSet(false, "img", "raw"))
+                        .put("vmdk", buildExtensionSet(false, "vmdk"))
+                        .put("iso", buildExtensionSet(true, "iso"))
+            .build();
+
+    public final static Set<String> getSupportedExtensions(String format) {
+        return SUPPORTED_EXTENSIONS_BY_FORMAT.get(format);
+    }
+
     // verify if a URI path is compliance with the file format given
     private static void checkFormat(String format, String uripath) {
-        if ((!uripath.toLowerCase().endsWith("vhd")) && (!uripath.toLowerCase().endsWith("vhd.zip")) && (!uripath.toLowerCase().endsWith("vhd.bz2")) &&
-                (!uripath.toLowerCase().endsWith("vhdx")) && (!uripath.toLowerCase().endsWith("vhdx.gz")) &&
-                (!uripath.toLowerCase().endsWith("vhdx.bz2")) && (!uripath.toLowerCase().endsWith("vhdx.zip")) &&
-                (!uripath.toLowerCase().endsWith("vhd.gz")) && (!uripath.toLowerCase().endsWith("qcow2")) && (!uripath.toLowerCase().endsWith("qcow2.zip")) &&
-                (!uripath.toLowerCase().endsWith("qcow2.bz2")) && (!uripath.toLowerCase().endsWith("qcow2.gz")) && (!uripath.toLowerCase().endsWith("ova")) &&
-                (!uripath.toLowerCase().endsWith("ova.zip")) && (!uripath.toLowerCase().endsWith("ova.bz2")) && (!uripath.toLowerCase().endsWith("ova.gz")) &&
-                (!uripath.toLowerCase().endsWith("tar")) && (!uripath.toLowerCase().endsWith("tar.zip")) && (!uripath.toLowerCase().endsWith("tar.bz2")) &&
-                (!uripath.toLowerCase().endsWith("tar.gz")) && (!uripath.toLowerCase().endsWith("vmdk")) && (!uripath.toLowerCase().endsWith("vmdk.gz")) &&
-                (!uripath.toLowerCase().endsWith("vmdk.zip")) && (!uripath.toLowerCase().endsWith("vmdk.bz2")) && (!uripath.toLowerCase().endsWith("img")) &&
-                (!uripath.toLowerCase().endsWith("img.gz")) && (!uripath.toLowerCase().endsWith("img.zip")) && (!uripath.toLowerCase().endsWith("img.bz2")) &&
-                (!uripath.toLowerCase().endsWith("raw")) && (!uripath.toLowerCase().endsWith("raw.gz")) && (!uripath.toLowerCase().endsWith("raw.bz2")) &&
-                (!uripath.toLowerCase().endsWith("raw.zip")) && (!uripath.toLowerCase().endsWith("iso")) && (!uripath.toLowerCase().endsWith("iso.zip"))
-                && (!uripath.toLowerCase().endsWith("iso.bz2")) && (!uripath.toLowerCase().endsWith("iso.gz"))
-                && (!uripath.toLowerCase().endsWith("metalink"))) {
-            throw new IllegalArgumentException("Please specify a valid " + format.toLowerCase());
-        }
+        final String lowerCaseUri = uripath.toLowerCase();
 
-        if ((format.equalsIgnoreCase("vhd")
-                && (!uripath.toLowerCase().endsWith("vhd")
-                && !uripath.toLowerCase().endsWith("vhd.zip")
-                && !uripath.toLowerCase().endsWith("vhd.bz2")
-                && !uripath.toLowerCase().endsWith("vhd.gz")))
-                || (format.equalsIgnoreCase("vhdx")
-                && (!uripath.toLowerCase().endsWith("vhdx")
-                        && !uripath.toLowerCase().endsWith("vhdx.zip")
-                        && !uripath.toLowerCase().endsWith("vhdx.bz2")
-                        && !uripath.toLowerCase().endsWith("vhdx.gz")))
-                || (format.equalsIgnoreCase("qcow2")
-                && (!uripath.toLowerCase().endsWith("qcow2")
-                        && !uripath.toLowerCase().endsWith("qcow2.zip")
-                        && !uripath.toLowerCase().endsWith("qcow2.bz2")
-                        && !uripath.toLowerCase().endsWith("qcow2.gz"))
-                        && !uripath.toLowerCase().endsWith("metalink"))
-                || (format.equalsIgnoreCase("ova")
-                && (!uripath.toLowerCase().endsWith("ova")
-                        && !uripath.toLowerCase().endsWith("ova.zip")
-                        && !uripath.toLowerCase().endsWith("ova.bz2")
-                        && !uripath.toLowerCase().endsWith("ova.gz")
-                        && !uripath.toLowerCase().endsWith("metalink")))
-                || (format.equalsIgnoreCase("tar")
-                && (!uripath.toLowerCase().endsWith("tar")
-                        && !uripath.toLowerCase().endsWith("tar.zip")
-                        && !uripath.toLowerCase().endsWith("tar.bz2")
-                        && !uripath.toLowerCase().endsWith("tar.gz")))
-                || (format.equalsIgnoreCase("raw")
-                && (!uripath.toLowerCase().endsWith("img")
-                        && !uripath.toLowerCase().endsWith("img.zip")
-                        && !uripath.toLowerCase().endsWith("img.bz2")
-                        && !uripath.toLowerCase().endsWith("img.gz")
-                        && !uripath.toLowerCase().endsWith("raw")
-                        && !uripath.toLowerCase().endsWith("raw.bz2")
-                        && !uripath.toLowerCase().endsWith("raw.zip")
-                        && !uripath.toLowerCase().endsWith("raw.gz")))
-                || (format.equalsIgnoreCase("vmdk")
-                && (!uripath.toLowerCase().endsWith("vmdk")
-                        && !uripath.toLowerCase().endsWith("vmdk.zip")
-                        && !uripath.toLowerCase().endsWith("vmdk.bz2")
-                        && !uripath.toLowerCase().endsWith("vmdk.gz")))
-                || (format.equalsIgnoreCase("iso")
-                && (!uripath.toLowerCase().endsWith("iso")
-                        && !uripath.toLowerCase().endsWith("iso.zip")
-                        && !uripath.toLowerCase().endsWith("iso.bz2")
-                        && !uripath.toLowerCase().endsWith("iso.gz"))
-                        && !uripath.toLowerCase().endsWith("metalink"))) {
-            throw new IllegalArgumentException("Please specify a valid URL. URL:" + uripath + " is an invalid for the format " + format.toLowerCase());
-        }
+        final boolean unknownExtensionForFormat = SUPPORTED_EXTENSIONS_BY_FORMAT.get(format.toLowerCase())
+                                                                                .stream()
+                                                                                .noneMatch(lowerCaseUri::endsWith);
 
+        if (unknownExtensionForFormat) {
+            final Predicate<Set<String>> uriMatchesAnyExtension =
+                    supportedExtensions -> supportedExtensions.stream()
+                                                              .anyMatch(lowerCaseUri::endsWith);
+
+            boolean unknownExtension = SUPPORTED_EXTENSIONS_BY_FORMAT.values()
+                                                                     .stream()
+                                                                     .noneMatch(uriMatchesAnyExtension);
+
+            if (unknownExtension) {
+                throw new IllegalArgumentException("Please specify a valid " + format.toLowerCase());
+            }
+
+            throw new IllegalArgumentException("Please specify a valid URL. "
+                                                       + "URL:" + uripath + " is an invalid for the format " + format.toLowerCase());
+        }
     }
 
     public static InputStream getInputStreamFromUrl(String url, String user, String password) {
@@ -631,5 +623,16 @@ public class UriUtils {
             return true;
         }
         return !Collections.disjoint(vlans1, vlans2);
+    }
+
+    public static List<Integer> expandPvlanUri(String pvlanRange) {
+        final List<Integer> expandedVlans = new ArrayList<>();
+        if (Strings.isNullOrEmpty(pvlanRange)) {
+            return expandedVlans;
+        }
+        String[] parts = pvlanRange.split("-i");
+        expandedVlans.add(Integer.parseInt(parts[0]));
+        expandedVlans.add(Integer.parseInt(parts[1]));
+        return expandedVlans;
     }
 }

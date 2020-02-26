@@ -87,8 +87,6 @@ known_categories = {
     'OpenDaylight': 'Network',
     'createServiceInstance': 'Network',
     'addGloboDnsHost': 'Network',
-    'listnuagevspdomaintemplates': 'Network',
-    'listnuagevspglobaldomaintemplate': 'Network',
     'Vpn': 'VPN',
     'Limit': 'Limit',
     'ResourceCount': 'Limit',
@@ -140,7 +138,6 @@ known_categories = {
     'NiciraNvpDevice': 'Nicira NVP',
     'BrocadeVcsDevice': 'Brocade VCS',
     'BigSwitchBcfDevice': 'BigSwitch BCF',
-	'NuageVsp': 'Nuage VSP',
     'AutoScale': 'AutoScale',
     'Counter': 'AutoScale',
     'Condition': 'AutoScale',
@@ -169,7 +166,6 @@ known_categories = {
     'Ucs' : 'UCS',
     'CacheStores' : 'Cache Stores',
     'CacheStore' : 'Cache Store',
-    'IAM' : 'IAM',
     'OvsElement' : 'Ovs Element',
     'StratosphereSsp' : ' Stratosphere SSP',
     'Metrics' : 'Metrics',
@@ -190,7 +186,10 @@ known_categories = {
     'CA': 'Certificate',
     'listElastistorInterface': 'Misc',
     'cloudian': 'Cloudian',
-    'Sioc' : 'Sioc'
+    'Sioc' : 'Sioc',
+    'Diagnostics': 'Diagnostics',
+    'Management': 'Management',
+    'UnmanagedInstance': 'Virtual Machine'
     }
 
 
